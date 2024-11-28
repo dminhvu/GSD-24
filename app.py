@@ -32,7 +32,7 @@ def convert_excel_to_csv(df):
     new_df['Document Date'] = pd.to_datetime(df['Posting Date']).dt.strftime('%d/%m/%Y')
     
     # 5th column: Document Balance
-    new_df['Document Balance'] = df['Amount in Company Code Currency']
+    new_df['Document Balance'] = df['Amount in Company Code Currency'].apply(lambda x: f'{x:.2f}')
     
     return new_df
 
