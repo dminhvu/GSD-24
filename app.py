@@ -4,11 +4,13 @@ import io
 
 # Invoice type conversion dictionary
 INVOICE_TYPE_MAP = {
-    'PM': 'Regular Charges',
-    'T&M': 'T&M Billing - R3',
-    'Projects': 'Constr Proj - R3',
-    'Quote': 'QTN Billing - R3'
+    "PM": "Regular Charges",
+    "T&M": "T&M Billing - R3",
+    "Projects": "Constr Proj - R3",
+    "Quote": "QTN Billing - R3",
+    "Other": "Other",
 }
+
 
 def convert_excel_to_csv(df):
     """
@@ -16,39 +18,48 @@ def convert_excel_to_csv(df):
     """
     # Create new dataframe with required columns
     new_df = pd.DataFrame()
-    
+
     # 1st column: Debtor Reference
-    new_df['Debtor Reference'] = df['Custome'].astype(str) + '_' + df['Invoice Type'].map(INVOICE_TYPE_MAP)
-    
-    # 2nd column: Transaction Type
-    new_df['Transaction Type'] = df['Amount in Company Code Currency'].apply(
-        lambda x: 'INV' if x >= 0 else 'CRD'
+    new_df["Debtor Reference"] = (
+        df["Custome"].astype(str) + "_" + df["Invoice Type"].map(INVOICE_TYPE_MAP)
     )
-    
+
+    # 2nd column: Transaction Type
+    new_df["Transaction Type"] = df["Amount in Company Code Currency"].apply(
+        lambda x: "INV" if x >= 0 else "CRD"
+    )
+
     # 3rd column: Document Number
-    new_df['Document Number'] = df['Reference Document'].astype(str)
-    
+    new_df["Document Number"] = (
+        df["Reference Document"].astype(str)
+        + "_"
+        + df["Profit Center"].astype(str).str[:4]
+    )
+
     # 4th column: Document Date (convert to DD/MM/YYYY)
-    new_df['Document Date'] = pd.to_datetime(df['Posting Date']).dt.strftime('%d/%m/%Y')
-    
+    new_df["Document Date"] = pd.to_datetime(df["Posting Date"]).dt.strftime("%d/%m/%Y")
+
     # 5th column: Document Balance
-    new_df['Document Balance'] = df['Amount in Company Code Currency'].apply(lambda x: f'{x:.2f}')
-    
+    new_df["Document Balance"] = df["Amount in Company Code Currency"].apply(
+        lambda x: f"{x:.2f}"
+    )
+
     return new_df
 
+
 def main():
-    st.title('Ledger Upload Reformatting Tool')
-    
+    st.title("GSD-24 Reformatting Tool (Ledger Upload)")
+
     # File uploader
-    uploaded_file = st.file_uploader("Choose an Excel file", type=['xlsx', 'xls'])
-    
+    uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx", "xls"])
+
     if uploaded_file is not None:
         # Read file
         try:
             df = pd.read_excel(uploaded_file)
             st.write("### Original Data Preview")
             st.dataframe(df)
-            
+
             # Transformation steps explanation
             with st.expander("Transformation Steps"):
                 st.markdown("""
@@ -59,13 +70,15 @@ def main():
                      - T&M → T&M Billing - R3
                      - Projects → Constr Proj - R3
                      - Quote → QTN Billing - R3
+                     - Other → Other
                 
                 2. **Transaction Type**:
                    - 'INV' if Amount ≥ 0
                    - 'CRD' if Amount < 0
                 
                 3. **Document Number**:
-                   - Uses Reference Document from original file
+                   - Combines Reference Document with Profit Center
+                   - Profit Center is the first 4 characters
                 
                 4. **Document Date**:
                    - Converted to DD/MM/YYYY format
@@ -73,27 +86,28 @@ def main():
                 5. **Document Balance**:
                    - Uses Amount in Company Code Currency
                 """)
-            
+
             # Convert dataframe
             converted_df = convert_excel_to_csv(df)
-            
+
             st.write("### Converted Data Preview")
             st.dataframe(converted_df)
-            
+
             # Download button
             output = io.BytesIO()
             converted_df.to_csv(output, index=False)
             output.seek(0)
-            
+
             st.download_button(
                 label="Download Converted CSV",
                 data=output,
-                file_name='converted_data.csv',
-                mime='text/csv'
+                file_name="converted_data.csv",
+                mime="text/csv",
             )
-        
+
         except Exception as e:
             st.error(f"Error processing file: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
